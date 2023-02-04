@@ -21,11 +21,28 @@ spring:
         - id: member-service
           uri: lb://MEMBER-SERVICE
           predicates:
+            - Path=/member-service/members/**
+            - Method=GET,PUT,DELETE
+          filters:
+            - AuthorizationHeaderFilter
+        - id: member-service
+          uri: lb://MEMBER-SERVICE
+          predicates:
             - Path=/member-service/**
         - id: board-service
           uri: lb://MEMBER-SERVICE
           predicates:
             - Path=/board-service/**
+            - Method=PUT,DELETE
+        - id: board-service
+          uri: lb://MEMBER-SERVICE
+          predicates:
+            - Path=/board-service/**
+        - id: comment-service
+          uri: lb://MEMBER-SERVICE
+          predicates:
+            - Path=/comment-service/**
+            - Method=PUT,DELETE
         - id: comment-service
           uri: lb://MEMBER-SERVICE
           predicates:
