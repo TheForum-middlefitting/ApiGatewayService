@@ -1,8 +1,7 @@
 package com.example.apigatewayservice.filter;
 
 import com.auth0.jwt.exceptions.*;
-import com.example.apigatewayservice.config.jwt.JwtProperties;
-import com.example.apigatewayservice.utils.errorCode.ErrorCode;
+import com.example.apigatewayservice.utils.errorCode.ErrorHelper;
 import com.example.apigatewayservice.utils.jwt.JwtUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -24,51 +23,52 @@ import java.nio.charset.StandardCharsets;
 @Component
 @Slf4j
 public class AuthorizationHeaderFilter extends AbstractGatewayFilterFactory<AuthorizationHeaderFilter.Config> {
-    Environment env;
-    JwtUtils jwtUtils;
+    private final Environment env;
+    private final JwtUtils jwtUtils;
+    private final ErrorHelper errorHelper;
 
-    public AuthorizationHeaderFilter(Environment env) {
+    public AuthorizationHeaderFilter(Environment env, JwtUtils jwtUtils, ErrorHelper errorHelper) {
         super(Config.class);
         this.env = env;
+        this.jwtUtils = jwtUtils;
+        this.errorHelper = errorHelper;
     }
 
-    public static class Config {
-
-    }
+    public static class Config { }
 
     @Override
     public GatewayFilter apply(Config config) {
         return ((exchange, chain) -> {
             try {
                 ServerHttpRequest request = exchange.getRequest();
-                JwtUtils.verifyJwtToken(request, JwtProperties.ACCESS_HEADER_STRING);
+                jwtUtils.verifyJwtToken(request, env.getProperty("token.ACCESS_HEADER_STRING"));
                 return  chain.filter(exchange);
             } catch (JWTDecodeException e) {
-                return onError(exchange, ErrorCode.JWTDecodeFailed.getCode(), ErrorCode.JWTDecodeFailed.getMessage(), HttpStatus.UNAUTHORIZED);
+                return onError(exchange, errorHelper.getCode("JWTDecodeFailed"), errorHelper.getMsg("JWTDecodeFailed"), HttpStatus.UNAUTHORIZED);
             } catch (TokenExpiredException e) {
-                return onError(exchange, ErrorCode.TokenExpired.getCode(), ErrorCode.TokenExpired.getMessage(), HttpStatus.UNAUTHORIZED);
+                return onError(exchange, errorHelper.getCode("TokenExpired"), errorHelper.getMsg("TokenExpired"), HttpStatus.UNAUTHORIZED);
             } catch (InvalidClaimException e) {
-                return onError(exchange, ErrorCode.InvalidClaim.getCode(), ErrorCode.InvalidClaim.getMessage(), HttpStatus.UNAUTHORIZED);
+                return onError(exchange, errorHelper.getCode("InvalidClaim"), errorHelper.getMsg("InvalidClaim"), HttpStatus.UNAUTHORIZED);
             } catch (SignatureVerificationException e) {
-                return onError(exchange, ErrorCode.SignatureVerificationFailed.getCode(), ErrorCode.SignatureVerificationFailed.getMessage(), HttpStatus.UNAUTHORIZED);
+                return onError(exchange, errorHelper.getCode("SignatureVerificationFailed"), errorHelper.getMsg("SignatureVerificationFailed"), HttpStatus.UNAUTHORIZED);
             } catch (JWTVerificationException e) {
-                return onError(exchange, ErrorCode.JWTVerificationFailed.getCode(), ErrorCode.JWTVerificationFailed.getMessage(), HttpStatus.UNAUTHORIZED);
+                return onError(exchange, errorHelper.getCode("JWTVerificationFailed"), errorHelper.getMsg("JWTVerificationFailed"), HttpStatus.UNAUTHORIZED);
             } catch (IllegalArgumentException e) {
-                return onError(exchange, ErrorCode.NoToken.getCode(), ErrorCode.NoToken.getMessage(), HttpStatus.UNAUTHORIZED);
+                return onError(exchange, errorHelper.getCode(e.getMessage()), errorHelper.getMsg(e.getMessage()), HttpStatus.UNAUTHORIZED);
             } catch (RuntimeException e) {
-                return onError(exchange, ErrorCode.Forbidden.getCode(), ErrorCode.Forbidden.getMessage(), HttpStatus.FORBIDDEN);
+                return onError(exchange, errorHelper.getCode("Forbidden"), errorHelper.getMsg("Forbidden"), HttpStatus.FORBIDDEN);
             } catch (Exception e) {
-                return onError(exchange, ErrorCode.InternalServer.getCode(), ErrorCode.InternalServer.getMessage(), HttpStatus.UNAUTHORIZED);
+                return onError(exchange, errorHelper.getCode("InternalServer"), errorHelper.getMsg("InternalServer"), HttpStatus.UNAUTHORIZED);
             }
         });
     }
 
-    private Mono<Void> onError(ServerWebExchange exchange, int code, String message, HttpStatus status) {
+    private Mono<Void> onError(ServerWebExchange exchange, String code, String message, HttpStatus status) {
         ObjectMapper objectMapper = new ObjectMapper();
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(status);
         response.getHeaders().add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
-        byte[] bytes = errorCodeMaker(String.valueOf(code), message, status.value()).getBytes(StandardCharsets.UTF_8);
+        byte[] bytes = errorCodeMaker(code, message, status.value()).getBytes(StandardCharsets.UTF_8);
         DataBuffer dataBuffer = exchange.getResponse().bufferFactory().wrap(bytes);
         return response.writeWith(Mono.just(dataBuffer));
     }
