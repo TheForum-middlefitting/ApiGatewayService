@@ -9,6 +9,8 @@ eureka:
 spring:
   application:
     name: apigateway-service
+  profiles:
+    include: env
   cloud:
     gateway:
       default-filters:
@@ -47,3 +49,15 @@ spring:
           uri: lb://MEMBER-SERVICE
           predicates:
             - Path=/comment-service/**
+        - id: board-config-service
+          uri: lb://MEMBER-SERVICE
+          predicates:
+            - Path=/board-config-service/actuator/**
+            - Method=GET,POST
+          filters:
+            - RewritePath=/board-config-service/(?<segment>.*), /$\{segment}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: refresh, health, beans, httptrace, busrefresh

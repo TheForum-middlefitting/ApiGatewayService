@@ -8,10 +8,12 @@ import com.example.apigatewayservice.utils.cheak.CommonCheckUtil;
 import com.example.apigatewayservice.utils.exception.AuthenticationFailedException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.stereotype.Component;
 
 import static com.example.apigatewayservice.utils.errorCode.ErrorCode.NoToken;
 
 
+@Component
 public class JwtUtils {
     private JwtUtils() throws InstantiationException {
         throw new InstantiationException();

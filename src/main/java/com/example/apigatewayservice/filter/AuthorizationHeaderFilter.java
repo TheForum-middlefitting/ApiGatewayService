@@ -25,6 +25,7 @@ import java.nio.charset.StandardCharsets;
 @Slf4j
 public class AuthorizationHeaderFilter extends AbstractGatewayFilterFactory<AuthorizationHeaderFilter.Config> {
     Environment env;
+    JwtUtils jwtUtils;
 
     public AuthorizationHeaderFilter(Environment env) {
         super(Config.class);
